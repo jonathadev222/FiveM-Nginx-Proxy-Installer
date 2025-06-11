@@ -13,31 +13,18 @@ fi
 # 2. Instalasi Nginx dari repositori resmi
 install_nginx() {
     echo "--- Memulai instalasi Nginx ---"
-    
-    # Perbarui daftar paket dan instal dependensi yang diperlukan
     apt-get update
     apt-get install -y gnupg2 lsb-release software-properties-common wget curl
-
-    # Dapatkan nama kode rilis Ubuntu (contoh: focal)
     OS_CODENAME=$(lsb_release -cs)
-
-    # Tambahkan kunci GPG resmi Nginx (metode modern dan aman)
     echo "Menambahkan kunci GPG Nginx..."
     curl -fsSL http://nginx.org/keys/nginx_signing.key | gpg --dearmor -o /usr/share/keyrings/nginx-archive-keyring.gpg
-
-    # Tambahkan repositori Nginx Mainline
     echo "Menambahkan repositori Nginx..."
     echo "deb [signed-by=/usr/share/keyrings/nginx-archive-keyring.gpg] http://nginx.org/packages/mainline/ubuntu/ $OS_CODENAME nginx" | tee /etc/apt/sources.list.d/nginx.list
-    
-    # Perbarui daftar paket lagi dan instal Nginx
     echo "Menginstal Nginx..."
     apt-get update
     apt-get install -y nginx
-    
-    # Aktifkan dan jalankan Nginx saat boot
     systemctl enable nginx
     systemctl start nginx
-    
     echo "--- Instalasi Nginx selesai ---"
 }
 
@@ -80,20 +67,11 @@ sed -i "s/server_name_goes_here/$domain/g" /etc/nginx/web.conf
 # 8. Buat sertifikat SSL jika diperlukan
 if [[ "$ssl" == "y" || "$ssl" == "Y" ]]; then
     echo -e "\nMembuat sertifikat SSL untuk $domain..."
-    # Hentikan Nginx sementara agar Certbot dapat memverifikasi domain
     systemctl stop nginx
-    
-    # Jalankan Certbot tanpa interaksi.
-    # Catatan: Opsi --register-unsafely-without-email digunakan untuk otomatisasi.
-    # Anda tidak akan menerima notifikasi kedaluwarsa email dari Let's Encrypt.
     certbot certonly --nginx -d $domain --non-interactive --agree-tos --register-unsafely-without-email
-    
-    # Salin file sertifikat ke direktori SSL Nginx
     echo "Menyalin file sertifikat..."
     cp /etc/letsencrypt/live/$domain/fullchain.pem /etc/nginx/ssl/fullchain.pem
     cp /etc/letsencrypt/live/$domain/privkey.pem /etc/nginx/ssl/privkey.pem
-    
-    # Sesuaikan file web.conf untuk menggunakan SSL (HTTPS)
     echo "Mengaktifkan SSL di konfigurasi web..."
     sed -i 's/listen 80;/listen 443 ssl http2;/g' /etc/nginx/web.conf
     sed -i 's/# ssl_certificate/ssl_certificate/g' /etc/nginx/web.conf
